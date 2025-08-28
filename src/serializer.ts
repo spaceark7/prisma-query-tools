@@ -1,0 +1,57 @@
+import { QueryOptions } from "./types";
+import * as yup from 'yup';
+
+// Define validation schema for serialization
+const serializeSchema = yup.object({
+  page: yup.number().integer().min(1).nullable(),
+  limit: yup.number().integer().min(1).nullable(),
+  sort: yup.string().nullable(),
+  fields: yup.array().of(yup.string()).nullable(),
+  filters: yup.object().nullable()
+});
+
+/**
+ * Serializes a query options object into a URL query string with validation
+ * @param options - The query options to serialize
+ * @returns The serialized query string with leading '?' if not empty
+ * @throws Error if validation fails
+ */
+export function serializeQuery(options: QueryOptions): string {
+  try {
+    // Validate options
+    serializeSchema.validateSync(options, { abortEarly: false });
+    
+    const params = new URLSearchParams();
+
+    if (options.page !== undefined) params.set("page", options.page.toString());
+    if (options.limit !== undefined) params.set("limit", options.limit.toString());
+
+    if (options.sort) params.set("sort", options.sort);
+
+    if (options.fields && options.fields.length > 0) {
+      params.set("fields", options.fields.join(","));
+    }
+
+    if (options.filters) {
+      for (const [key, value] of Object.entries(options.filters)) {
+        if (value !== undefined && value !== null) {
+          // Handle different types of values
+          if (typeof value === 'object') {
+            params.set(`filters[${key}]`, JSON.stringify(value));
+          } else {
+            params.set(`filters[${key}]`, String(value));
+          }
+        }
+      }
+    }
+
+    const queryString = params.toString();
+    return queryString ? `?${queryString}` : "";
+    
+  } catch (error) {
+    if (error instanceof yup.ValidationError) {
+      throw new Error(`Query serialization failed: ${error.message}`);
+    }
+    throw error;
+  }
+}
