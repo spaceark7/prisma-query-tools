@@ -1,5 +1,5 @@
-import { PrismaQuery, QueryOptions, QueryParseResult } from "./types";
 import * as yup from 'yup';
+import type { PrismaQuery, QueryOptions, QueryParseResult } from './types';
 
 /**
  * Converts a string value to appropriate type (boolean, number, or keeps as string)

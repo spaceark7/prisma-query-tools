@@ -1,4 +1,4 @@
-import { QueryOptions, SerializerConfig } from "./types";
+import type { QueryOptions, SerializerConfig } from "./types";
 import * as yup from 'yup';
 
 /**

@@ -1,4 +1,4 @@
-import { PrismaQuery } from './types';
+import type { PrismaQuery } from './types';
 
 /**
  * Options for merging queries
