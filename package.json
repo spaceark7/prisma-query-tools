@@ -1,6 +1,6 @@
 {
   "name": "prisma-query-tools",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "Tools for working with Prisma queries in Backend and Frontend",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
