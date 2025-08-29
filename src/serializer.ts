@@ -1,6 +1,28 @@
 import { QueryOptions, SerializerConfig } from "./types";
 import * as yup from 'yup';
 
+/**
+ * Flattens a nested object into a single-level object with dot-separated keys
+ * @param obj - The object to flatten
+ * @param prefix - The prefix to use for keys (used in recursive calls)
+ * @returns A flattened object with dot-separated keys
+ */
+function flattenObject(obj: Record<string, any>, prefix = ''): Record<string, any> {
+  return Object.keys(obj).reduce((acc: Record<string, any>, key: string) => {
+    const prefixedKey = prefix ? `${prefix}.${key}` : key;
+
+    if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
+      // Recurse for nested objects
+      Object.assign(acc, flattenObject(obj[key], prefixedKey));
+    } else {
+      // Use the key as is for primitive values or arrays
+      acc[prefixedKey] = obj[key];
+    }
+
+    return acc;
+  }, {});
+}
+
 // Define validation schema for serialization
 const serializeSchema = yup.object({
   page: yup.number().integer().min(1).nullable(),
@@ -37,14 +59,12 @@ export function serializeQuery(options: QueryOptions, config: SerializerConfig =
     }
 
     if (options.filters) {
-      for (const [key, value] of Object.entries(options.filters)) {
+      // Convert nested objects to flattened dot notation
+      const flattenedFilters = flattenObject(options.filters);
+
+      for (const [path, value] of Object.entries(flattenedFilters)) {
         if (value !== undefined && value !== null) {
-          // Handle different types of values
-          if (typeof value === 'object') {
-            params.set(`filters[${key}]`, JSON.stringify(value));
-          } else {
-            params.set(`filters[${key}]`, String(value));
-          }
+          params.set(`filters[${path}]`, String(value));
         }
       }
     }

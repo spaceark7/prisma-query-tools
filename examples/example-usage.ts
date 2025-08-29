@@ -8,7 +8,9 @@ const validQueryParams = {
   sort: 'name:asc,createdAt:desc',
   fields: 'id,name,email',
   'filters[status]': 'active',
-  'filters[age]': '30'
+  'filters[age]': '30',
+  'filters[user.profile.firstName]': 'John',
+  'filters[user.profile.lastName]': 'Doe'
 };
 
 const parseResult = parseQuery(validQueryParams);
@@ -44,7 +46,14 @@ const queryOptions: QueryOptions = {
   fields: ['id', 'name', 'email'],
   filters: {
     status: 'active',
-    age: 30
+    age: 30,
+    user: {
+      profile: {
+        firstName: 'John',
+        lastName: 'Doe'
+      },
+      isActive: true
+    }
   }
 };
 

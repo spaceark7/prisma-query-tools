@@ -1,6 +1,38 @@
 import { PrismaQuery, QueryOptions, QueryParseResult } from "./types";
 import * as yup from 'yup';
 
+/**
+ * Sets a value in a nested object using a dot-separated path
+ * @param obj - The object to modify
+ * @param path - The dot-separated path (e.g. "profile.firstName")
+ * @param value - The value to set
+ */
+function setNestedValue(obj: Record<string, any>, path: string, value: any): void {
+  const keys = path.split('.');
+  const lastKey = keys.pop()!;
+  let current = obj;
+
+  // Traverse the path, creating objects as needed
+  for (const key of keys) {
+    if (!(key in current) || typeof current[key] !== 'object') {
+      current[key] = {};
+    }
+    current = current[key];
+  }
+
+  // Convert value to number or boolean if it looks like one
+  let processedValue = value;
+  if (processedValue === 'true') {
+    processedValue = true;
+  } else if (processedValue === 'false') {
+    processedValue = false;
+  } else if (!isNaN(Number(processedValue)) && processedValue.trim() !== '') {
+    processedValue = Number(processedValue);
+  }
+
+  current[lastKey] = processedValue;
+}
+
 // Define validation schema for query parameters
 const querySchema = yup.object({
   page: yup.number().integer().min(1).typeError('Page must be a positive integer'),
@@ -53,12 +85,19 @@ export function parseQuery(raw: Record<string, any>): QueryParseResult {
       query.fields = String(raw.fields).split(",");
     }
 
-    // Detect filter keys like filters[status]
+    // Detect filter keys like filters[status] or filters[profile.firstName]
     query.filters = {};
     for (const key in raw) {
       const match = key.match(/^filters\[(.+)\]$/);
       if (match) {
-        query.filters[match[1]] = raw[key];
+        const path = match[1];
+        if (path.includes('.')) {
+          // Handle nested path like 'profile.firstName'
+          setNestedValue(query.filters, path, raw[key]);
+        } else {
+          // Handle simple path
+          query.filters[path] = raw[key];
+        }
       }
     }
 

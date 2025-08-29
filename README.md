@@ -8,6 +8,7 @@ A powerful and type-safe utility library for converting between URL query parame
 - 📝 Convert Prisma query options back to URL query strings
 - ✅ Comprehensive validation with detailed error messages
 - 🔍 Support for filters, pagination, sorting, and field selection
+- 🌳 Support for nested object queries using dot notation (e.g., `profile.firstName`)
 - 📦 Dual ESM/CommonJS support
 - 📘 Full TypeScript support
 
@@ -35,7 +36,8 @@ const queryParams = {
   sort: 'name:asc,createdAt:desc',
   fields: 'id,name,email',
   'filters[status]': 'active',
-  'filters[age]': '30'
+  'filters[age]': '30',
+  'filters[profile.firstName]': 'John'
 };
 
 const result = parseQuery(queryParams);
@@ -46,6 +48,38 @@ if (result.success) {
 } else {
   // Handle validation errors
   console.error(result.errors);
+}
+```
+
+### Using Nested Queries
+
+Handle complex filters with nested objects using dot notation:
+
+```typescript
+// Query parameters from the URL
+const queryParams = {
+  'filters[user.profile.firstName]': 'John',
+  'filters[user.profile.lastName]': 'Doe',
+  'filters[user.isActive]': 'true',
+  'filters[categories]': 'technology,programming'
+};
+
+const result = parseQuery(queryParams);
+
+if (result.success) {
+  console.log(result.data.where);
+  /* Output:
+  {
+    user: {
+      profile: {
+        firstName: 'John',
+        lastName: 'Doe'
+      },
+      isActive: true
+    },
+    categories: 'technology,programming'
+  }
+  */
 }
 ```
 
@@ -63,12 +97,52 @@ const queryOptions = {
   fields: ['id', 'name', 'email'],
   filters: {
     status: 'active',
-    age: 30
+    age: 30,
+    profile: {
+      firstName: 'John'
+    }
   }
 };
 
 const queryString = serializeQuery(queryOptions);
-// Result: ?page=2&limit=10&sort=name%3Aasc%2CcreatedAt%3Adesc&fields=id%2Cname%2Cemail&filters%5Bstatus%5D=active&filters%5Bage%5D=30
+// Result: ?page=2&limit=10&sort=name%3Aasc%2CcreatedAt%3Adesc&fields=id%2Cname%2Cemail&filters%5Bstatus%5D=active&filters%5Bage%5D=30&filters%5Bprofile.firstName%5D=John
+```
+
+### Serializing Nested Objects
+
+Nested objects are automatically flattened to dot notation:
+
+```typescript
+import { serializeQuery } from 'prisma-query-tools';
+
+const queryOptions = {
+  filters: {
+    user: {
+      profile: {
+        address: {
+          city: 'New York',
+          zipCode: 10001
+        }
+      },
+      isActive: true
+    }
+  }
+};
+
+const queryString = serializeQuery(queryOptions);
+// Result includes:
+// filters[user.profile.address.city]=New%20York
+// filters[user.profile.address.zipCode]=10001
+// filters[user.isActive]=true
+```
+
+### Pretty Print for Debugging
+
+Use pretty printing for easier debugging:
+
+```typescript
+const queryString = serializeQuery(queryOptions, { prettyPrint: true });
+// Result will be formatted with newlines and unescaped special characters
 ```
 
 ## API Reference
