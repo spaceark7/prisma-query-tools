@@ -9,7 +9,8 @@ A powerful and type-safe utility library for converting between URL query parame
 - ✅ Comprehensive validation with detailed error messages
 - 🔍 Support for filters, pagination, sorting, and field selection
 - 🌳 Support for nested object queries using dot notation (e.g., `profile.firstName`)
-- 📦 Dual ESM/CommonJS support
+- � Merge default queries with parsed queries (e.g., add soft-delete filters)
+- �📦 Dual ESM/CommonJS support
 - 📘 Full TypeScript support
 
 ## Installation
@@ -145,6 +146,64 @@ const queryString = serializeQuery(queryOptions, { prettyPrint: true });
 // Result will be formatted with newlines and unescaped special characters
 ```
 
+## Advanced Usage
+
+### Merging with Default Queries
+
+In real-world applications, you often need to apply default conditions to queries, such as:
+
+- Filtering out soft-deleted records (`deletedAt: null`)
+- Enforcing multi-tenant isolation (`tenantId: 'current-tenant'`)
+- Adding default sorting or pagination
+
+The `mergeQueries` helper makes this easy:
+
+```typescript
+import { parseQuery, mergeQueries } from 'prisma-query-tools';
+
+// Express/Fastify/etc. route handler
+app.get('/api/users', async (req, res) => {
+  // Define application defaults
+  const defaultQuery = {
+    where: { deletedAt: null },
+    orderBy: [{ createdAt: 'desc' }],
+    take: 10 // Default page size
+  };
+
+  // Parse the request query
+  const result = parseQuery(req.query);
+  
+  if (!result.success) {
+    return res.status(400).json({ errors: result.errors });
+  }
+  
+  // Merge with different strategies for different parts
+  const query = mergeQueries(defaultQuery, result.data, {
+    whereStrategy: 'and',      // Ensure both conditions are met (deletedAt: null AND user filters)
+    orderByStrategy: 'append'  // User's sort choice takes precedence over default sorting
+  });
+  
+  try {
+    // Use the merged query with Prisma
+    const [users, totalCount] = await Promise.all([
+      prisma.user.findMany(query),
+      prisma.user.count({ where: query.where })
+    ]);
+    
+    return res.json({
+      data: users,
+      meta: {
+        totalCount,
+        page: Math.floor((query.skip || 0) / (query.take || 10)) + 1,
+        pageSize: query.take || 10
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({ error: 'Database error' });
+  }
+});
+```
+
 ## API Reference
 
 ### `parseQuery(raw: Record<string, any>): QueryParseResult`
@@ -174,6 +233,45 @@ Serializes query options to a URL query string.
 
 A URL query string (including the leading '?' if not empty)
 
+### `mergeQueries(defaultQuery: PrismaQuery, parsedQuery: PrismaQuery, options?: MergeQueryOptions): PrismaQuery`
+
+Merges a default Prisma query with a parsed query. Useful for adding default conditions like filtering out soft-deleted records.
+
+#### Parameters
+
+- `defaultQuery`: The default query options (e.g., `{ where: { deletedAt: null } }`)
+- `parsedQuery`: The query parsed from request parameters
+- `options`: Options for controlling how the merge happens:
+  - `whereStrategy`: How to merge where conditions ('replace', 'spread', or 'and')
+  - `selectStrategy`: How to merge select fields ('replace' or 'merge')
+  - `orderByStrategy`: How to merge orderBy conditions ('replace', 'prepend', or 'append')
+
+#### Returns
+
+A merged Prisma query combining both inputs according to the specified strategies
+
+#### Example
+
+```typescript
+import { parseQuery, mergeQueries } from 'prisma-query-tools';
+
+// Define your default query (e.g., to filter out soft-deleted records)
+const defaultQuery = {
+  where: { deletedAt: null }
+};
+
+// Parse query params from the request
+const result = parseQuery(req.query);
+
+if (result.success) {
+  // Merge the default query with the parsed query
+  const mergedQuery = mergeQueries(defaultQuery, result.data);
+  
+  // Use the merged query with Prisma
+  const users = await prisma.user.findMany(mergedQuery);
+}
+```
+
 ## Type Reference
 
 ### QueryOptions
@@ -197,6 +295,16 @@ interface PrismaQuery {
   select?: Record<string, boolean>;
   orderBy?: Record<string, "asc" | "desc">[];
   where?: Record<string, any>;
+}
+```
+
+### MergeQueryOptions
+
+```typescript
+interface MergeQueryOptions {
+  whereStrategy?: 'replace' | 'spread' | 'and'; // Default: 'spread'
+  selectStrategy?: 'replace' | 'merge';         // Default: 'merge'
+  orderByStrategy?: 'replace' | 'prepend' | 'append'; // Default: 'prepend'
 }
 ```
 
