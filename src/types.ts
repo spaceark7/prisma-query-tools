@@ -6,10 +6,14 @@ export interface QueryOptions {
   filters?: Record<string, any>;
 }
 
+export interface SelectField {
+  [key: string]: boolean | { select: SelectField };
+}
+
 export interface PrismaQuery {
   skip?: number;
   take?: number;
-  select?: Record<string, boolean>;
+  select?: SelectField;
   orderBy?: Record<string, "asc" | "desc">[];
   where?: Record<string, any>;
 }

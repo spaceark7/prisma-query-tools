@@ -53,7 +53,7 @@ const querySchema = yup.object({
   limit: yup.number().integer().min(1).typeError('Limit must be a positive integer'),
   sort: yup.string().matches(/^[a-zA-Z0-9_]+(:(asc|desc))?(,[a-zA-Z0-9_]+(:(asc|desc))?)*$/, 
     'Sort must be in format field:direction (e.g. name:asc,createdAt:desc)'),
-  fields: yup.array().of(yup.string().matches(/^[a-zA-Z0-9_]+$/, 'Field names must be alphanumeric'))
+  fields: yup.array().of(yup.string().matches(/^[a-zA-Z0-9_.]+$/, 'Field names must be alphanumeric with optional dot notation for nested fields'))
 });
 
 /**
@@ -96,7 +96,7 @@ export function parseQuery(raw: Record<string, any>): QueryParseResult {
     }
 
     if (raw.fields !== undefined) {
-      query.fields = String(raw.fields).split(",");
+      query.fields = String(raw.fields).split(",").map(field => field.trim()).filter(field => field !== "");
     }
 
     // Detect filter keys like filters[status] or filters[profile.firstName]
@@ -148,11 +148,34 @@ export function parseQuery(raw: Record<string, any>): QueryParseResult {
     // Handle field selection
     if (query.fields && query.fields.length > 0) {
       prismaQuery.select = {};
-      query.fields.forEach((f) => {
-        if (prismaQuery.select) {
-          prismaQuery.select[f] = true;
+
+      for (const field of query.fields) {
+        if (field.includes('.')) {
+          // Handle nested field like 'profile.bio'
+          const parts = field.split('.');
+          let current = prismaQuery.select!;
+
+          for (let i = 0; i < parts.length - 1; i++) {
+            const part = parts[i];
+            if (!current[part]) {
+              current[part] = { select: {} };
+            } else if (typeof current[part] === 'object' && 'select' in current[part]) {
+              // It already has a select object, no need to do anything
+            } else {
+              // If it exists but doesn't have a select property (it might be a boolean), convert it
+              current[part] = { select: {} };
+            }
+            // TypeScript needs a type assertion here since we've ensured it's an object with select
+            current = (current[part] as { select: any }).select;
+          }
+
+          // Set the final field
+          current[parts[parts.length - 1]] = true;
+        } else {
+          // Handle simple field
+          prismaQuery.select[field] = true;
         }
-      });
+      }
     }
 
     // Handle sorting
