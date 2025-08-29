@@ -19,3 +19,8 @@ export interface QueryParseResult {
   success: boolean;
   errors?: Record<string, string>;
 }
+
+export interface SerializerConfig {
+  startWithQuestionMark?: boolean;
+  prettyPrint?: boolean;
+}

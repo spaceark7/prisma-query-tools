@@ -1,4 +1,4 @@
-import { QueryOptions } from "./types";
+import { QueryOptions, SerializerConfig } from "./types";
 import * as yup from 'yup';
 
 // Define validation schema for serialization
@@ -16,7 +16,7 @@ const serializeSchema = yup.object({
  * @returns The serialized query string with leading '?' if not empty
  * @throws Error if validation fails
  */
-export function serializeQuery(options: QueryOptions): string {
+export function serializeQuery(options: QueryOptions, config?: SerializerConfig): string {
   try {
     // Validate options
     serializeSchema.validateSync(options, { abortEarly: false });
@@ -46,8 +46,8 @@ export function serializeQuery(options: QueryOptions): string {
     }
 
     const queryString = params.toString();
-    return queryString ? `?${queryString}` : "";
-    
+    return queryString ? `${config?.startWithQuestionMark ? '?' : ''}${queryString}` : "";
+
   } catch (error) {
     if (error instanceof yup.ValidationError) {
       throw new Error(`Query serialization failed: ${error.message}`);
