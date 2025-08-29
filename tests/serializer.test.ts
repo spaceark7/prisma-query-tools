@@ -86,7 +86,9 @@ describe('serializeQuery', () => {
       };
 
       const result = serializeQuery(options, { startWithQuestionMark: true });
-      expect(result).toMatch(/filters%5Brange%5D=%7B%22min%22%3A10%2C%22max%22%3A20%7D/);
+      // With the new flattening behavior, the nested object should be flattened
+      expect(result).toContain('filters%5Brange.min%5D=10');
+      expect(result).toContain('filters%5Brange.max%5D=20');
     });
     
     it('should skip null and undefined filter values', () => {

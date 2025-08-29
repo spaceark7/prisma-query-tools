@@ -2,6 +2,27 @@ import { PrismaQuery, QueryOptions, QueryParseResult } from "./types";
 import * as yup from 'yup';
 
 /**
+ * Converts a string value to appropriate type (boolean, number, or keeps as string)
+ * @param value - The value to convert
+ * @returns The converted value
+ */
+function convertValueType(value: any): any {
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  if (value === 'true') {
+    return true;
+  } else if (value === 'false') {
+    return false;
+  } else if (!isNaN(Number(value)) && value !== '' && String(Number(value)) === value) {
+    return Number(value);
+  }
+
+  return value;
+}
+
+/**
  * Sets a value in a nested object using a dot-separated path
  * @param obj - The object to modify
  * @param path - The dot-separated path (e.g. "profile.firstName")
@@ -20,15 +41,8 @@ function setNestedValue(obj: Record<string, any>, path: string, value: any): voi
     current = current[key];
   }
 
-  // Convert value to number or boolean if it looks like one
-  let processedValue = value;
-  if (processedValue === 'true') {
-    processedValue = true;
-  } else if (processedValue === 'false') {
-    processedValue = false;
-  } else if (!isNaN(Number(processedValue)) && processedValue.trim() !== '') {
-    processedValue = Number(processedValue);
-  }
+  // Convert value to appropriate type
+  const processedValue = convertValueType(value);
 
   current[lastKey] = processedValue;
 }
@@ -96,7 +110,7 @@ export function parseQuery(raw: Record<string, any>): QueryParseResult {
           setNestedValue(query.filters, path, raw[key]);
         } else {
           // Handle simple path
-          query.filters[path] = raw[key];
+          query.filters[path] = convertValueType(raw[key]);
         }
       }
     }

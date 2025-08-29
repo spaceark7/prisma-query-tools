@@ -84,9 +84,9 @@ describe('Nested Queries', () => {
       
       const result = serializeQuery(options);
       
-      expect(result).toContain('filters[profile.firstName]=John');
-      expect(result).toContain('filters[profile.lastName]=Doe');
-      expect(result).toContain('filters[age]=30');
+      expect(result).toContain('filters%5Bprofile.firstName%5D=John');
+      expect(result).toContain('filters%5Bprofile.lastName%5D=Doe');
+      expect(result).toContain('filters%5Bage%5D=30');
     });
     
     it('should handle deeply nested objects', () => {
@@ -105,8 +105,8 @@ describe('Nested Queries', () => {
       
       const result = serializeQuery(options);
       
-      expect(result).toContain('filters[user.profile.address.city]=New%20York');
-      expect(result).toContain('filters[user.profile.address.zip]=10001');
+      expect(result).toContain('filters%5Buser.profile.address.city%5D=New+York');
+      expect(result).toContain('filters%5Buser.profile.address.zip%5D=10001');
     });
     
     it('should handle arrays in nested objects', () => {
@@ -122,8 +122,8 @@ describe('Nested Queries', () => {
       const result = serializeQuery(options);
       
       // Arrays are serialized as they are (not flattened further)
-      expect(result).toContain('filters[tags]=javascript%2Ctypescript');
-      expect(result).toContain('filters[user.roles]=admin%2Ceditor');
+      expect(result).toContain('filters%5Btags%5D=javascript%2Ctypescript');
+      expect(result).toContain('filters%5Buser.roles%5D=admin%2Ceditor');
     });
   });
   
@@ -160,9 +160,9 @@ describe('Nested Queries', () => {
       // Parse again
       const secondParseResult = parseQuery(reconstructedParams);
       
-      // Verify the final result matches the original
+      // Verify the final result matches the original - use string for comparison to avoid type issues
       expect(secondParseResult.success).toBe(true);
-      expect(secondParseResult.data).toMatchObject({
+      expect(JSON.stringify(secondParseResult.data)).toEqual(JSON.stringify({
         where: {
           profile: {
             firstName: 'John',
@@ -170,7 +170,7 @@ describe('Nested Queries', () => {
           },
           age: 30
         }
-      });
+      }));
     });
   });
 });

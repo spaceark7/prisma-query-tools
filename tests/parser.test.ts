@@ -100,7 +100,7 @@ describe('parseQuery', () => {
       expect(result.data).toEqual({
         where: {
           status: 'active',
-          age: '30'
+          age: 30  // Now expecting a number as we convert string values
         }
       });
     });
