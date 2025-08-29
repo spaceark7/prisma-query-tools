@@ -18,6 +18,9 @@
     "isolatedModules": true,
     "skipLibCheck": true
   },
+  "tsc-alias": {
+    "resolveFullPaths": true
+  },
   "include": [
     "src"
   ],
