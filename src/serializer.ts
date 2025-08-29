@@ -13,10 +13,14 @@ const serializeSchema = yup.object({
 /**
  * Serializes a query options object into a URL query string with validation
  * @param options - The query options to serialize
+ * @param config - Configuration options for serialization
  * @returns The serialized query string with leading '?' if not empty
  * @throws Error if validation fails
  */
-export function serializeQuery(options: QueryOptions, config?: SerializerConfig): string {
+export function serializeQuery(options: QueryOptions, config: SerializerConfig = { startWithQuestionMark: true }): string {
+
+  const startWithQuestionMark = config.startWithQuestionMark ?? true;
+
   try {
     // Validate options
     serializeSchema.validateSync(options, { abortEarly: false });
@@ -45,9 +49,24 @@ export function serializeQuery(options: QueryOptions, config?: SerializerConfig)
       }
     }
 
-    const queryString = params.toString();
-    return queryString ? `${config?.startWithQuestionMark ? '?' : ''}${queryString}` : "";
+    let queryString = params.toString();
 
+    // Format with pretty print if specified
+    if (config.prettyPrint && queryString) {
+      queryString = queryString
+        .replace(/&/g, '\n&')
+        .replace(/%5B/g, '[')
+        .replace(/%5D/g, ']')
+        .replace(/%3A/g, ':')
+        .replace(/%2C/g, ',');
+    }
+
+    // Handle empty query strings and question mark prefix
+    if (!queryString) {
+      return startWithQuestionMark ? "?" : "";
+    }
+
+    return startWithQuestionMark ? `?${queryString}` : queryString;
   } catch (error) {
     if (error instanceof yup.ValidationError) {
       throw new Error(`Query serialization failed: ${error.message}`);

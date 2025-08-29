@@ -9,8 +9,8 @@ describe('serializeQuery', () => {
         page: 2,
         limit: 10
       };
-      
-      const result = serializeQuery(options);
+
+      const result = serializeQuery(options, { startWithQuestionMark: true });
       expect(result).toBe('?page=2&limit=10');
     });
     
@@ -18,8 +18,8 @@ describe('serializeQuery', () => {
       const options: QueryOptions = {
         page: 2
       };
-      
-      const result = serializeQuery(options);
+
+      const result = serializeQuery(options, { startWithQuestionMark: true });
       expect(result).toBe('?page=2');
     });
     
@@ -27,8 +27,8 @@ describe('serializeQuery', () => {
       const options: QueryOptions = {
         limit: 10
       };
-      
-      const result = serializeQuery(options);
+
+      const result = serializeQuery(options, { startWithQuestionMark: true });
       expect(result).toBe('?limit=10');
     });
   });
@@ -38,8 +38,8 @@ describe('serializeQuery', () => {
       const options: QueryOptions = {
         sort: 'name:asc,createdAt:desc'
       };
-      
-      const result = serializeQuery(options);
+
+      const result = serializeQuery(options, { startWithQuestionMark: true });
       expect(result).toBe('?sort=name%3Aasc%2CcreatedAt%3Adesc');
     });
   });
@@ -49,8 +49,8 @@ describe('serializeQuery', () => {
       const options: QueryOptions = {
         fields: ['id', 'name', 'email']
       };
-      
-      const result = serializeQuery(options);
+
+      const result = serializeQuery(options, { startWithQuestionMark: true });
       expect(result).toBe('?fields=id%2Cname%2Cemail');
     });
     
@@ -58,9 +58,9 @@ describe('serializeQuery', () => {
       const options: QueryOptions = {
         fields: []
       };
-      
-      const result = serializeQuery(options);
-      expect(result).toBe('');
+
+      const result = serializeQuery(options, { startWithQuestionMark: true });
+      expect(result).toBe('?');
     });
   });
   
@@ -72,8 +72,8 @@ describe('serializeQuery', () => {
           age: 30
         }
       };
-      
-      const result = serializeQuery(options);
+
+      const result = serializeQuery(options, { startWithQuestionMark: true });
       expect(result).toMatch(/filters%5Bstatus%5D=active/);
       expect(result).toMatch(/filters%5Bage%5D=30/);
     });
@@ -84,8 +84,8 @@ describe('serializeQuery', () => {
           range: { min: 10, max: 20 }
         }
       };
-      
-      const result = serializeQuery(options);
+
+      const result = serializeQuery(options, { startWithQuestionMark: true });
       expect(result).toMatch(/filters%5Brange%5D=%7B%22min%22%3A10%2C%22max%22%3A20%7D/);
     });
     
@@ -97,8 +97,8 @@ describe('serializeQuery', () => {
           name: undefined
         }
       };
-      
-      const result = serializeQuery(options);
+
+      const result = serializeQuery(options, { startWithQuestionMark: true });
       expect(result).toBe('?filters%5Bstatus%5D=active');
     });
   });
@@ -124,14 +124,46 @@ describe('serializeQuery', () => {
     });
   });
   
-  describe('Error handling', () => {
+  describe('Configuration options', () => {
+    it('should respect startWithQuestionMark=false option', () => {
+      const options: QueryOptions = {
+        page: 2,
+        limit: 10
+      };
+
+      const result = serializeQuery(options, { startWithQuestionMark: false });
+      expect(result).toBe('page=2&limit=10');
+    });
+
+    it('should apply prettyPrint formatting when specified', () => {
+      const options: QueryOptions = {
+        page: 2,
+        limit: 10,
+        sort: 'name:asc,createdAt:desc',
+        filters: {
+          status: 'active'
+        }
+      };
+
+      const result = serializeQuery(options, { prettyPrint: true });
+      expect(result).toContain('?');
+      // Check if newlines are added between parameters
+      expect(result.includes('\n&')).toBe(true);
+      // Check if brackets are unescaped
+      expect(result.includes('[status]')).toBe(true);
+      // Check if colons are unescaped
+      expect(result.includes('name:asc')).toBe(true);
+      // Check if commas are unescaped
+      expect(result.includes(',createdAt:desc')).toBe(true);
+    });
+  }); describe('Error handling', () => {
     it('should throw error for invalid page value', () => {
       const options = {
         page: -1,
         limit: 10
       } as QueryOptions;
-      
-      expect(() => serializeQuery(options)).toThrow();
+
+      expect(() => serializeQuery(options, { startWithQuestionMark: true })).toThrow();
     });
     
     it('should throw error for invalid limit value', () => {
@@ -139,14 +171,21 @@ describe('serializeQuery', () => {
         page: 1,
         limit: -10
       } as QueryOptions;
-      
-      expect(() => serializeQuery(options)).toThrow();
+
+      expect(() => serializeQuery(options, { startWithQuestionMark: true })).toThrow();
     });
     
-    it('should handle empty options gracefully', () => {
+    it('should handle empty options gracefully with question mark', () => {
       const options = {} as QueryOptions;
-      
+
       const result = serializeQuery(options);
+      expect(result).toBe('?');
+    });
+
+    it('should handle empty options gracefully without question mark', () => {
+      const options = {} as QueryOptions;
+
+      const result = serializeQuery(options, { startWithQuestionMark: false });
       expect(result).toBe('');
     });
   });

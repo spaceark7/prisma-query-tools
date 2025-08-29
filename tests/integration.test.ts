@@ -35,7 +35,9 @@ describe('Integration tests', () => {
       const queryString = serializeQuery(queryOptions);
       
       // Parse the query string again to verify it produces the same result
-      const urlParams = new URLSearchParams(queryString.substring(1));
+      // Remove the leading '?' if it exists
+      const paramsString = queryString.startsWith('?') ? queryString.substring(1) : queryString;
+      const urlParams = new URLSearchParams(paramsString);
       const reconstructedParams: Record<string, any> = {};
       
       for (const [key, value] of urlParams.entries()) {
@@ -63,11 +65,17 @@ describe('Integration tests', () => {
     it('should handle empty parameters gracefully in round-trip conversion', () => {
       const emptyOptions: QueryOptions = {};
       const queryString = serializeQuery(emptyOptions);
-      expect(queryString).toBe('');
+      expect(queryString).toBe('?'); // Now returns ? with default startWithQuestionMark: true
       
       const parseResult = parseQuery({});
       expect(parseResult.success).toBe(true);
       expect(parseResult.data).toEqual({});
+    });
+
+    it('should handle empty parameters with startWithQuestionMark: false', () => {
+      const emptyOptions: QueryOptions = {};
+      const queryString = serializeQuery(emptyOptions, { startWithQuestionMark: false });
+      expect(queryString).toBe(''); // Returns empty string when startWithQuestionMark is false
     });
   });
   
@@ -91,7 +99,7 @@ describe('Integration tests', () => {
       const options: QueryOptions = {};
       
       const queryString = serializeQuery(options);
-      expect(queryString).toBe('');
+      expect(queryString).toBe('?'); // Now returns ? with default startWithQuestionMark: true
     });
   });
 });
