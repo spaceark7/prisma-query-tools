@@ -36,3 +36,4 @@ yarn-error.log*
 .nvmrc
 run-tests.sh
 prisma-query-tools-*.tgz
+example-runner.mjs

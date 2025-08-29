@@ -39,3 +39,4 @@ coverage/
 
 # Development testing files
 run-tests.sh
+example-runner.mjs
