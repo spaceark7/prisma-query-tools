@@ -4,21 +4,23 @@
   "description": "Tools for working with Prisma queries in Backend and Frontend",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
-  "types": "dist/types/index.d.ts",
+  "types": "dist/esm/index.d.ts",
   "type": "module",
   "exports": {
     ".": {
       "import": {
-        "types": "./dist/types/index.d.ts",
+        "types": "./dist/esm/index.d.ts",
         "default": "./dist/esm/index.js"
       },
       "require": {
-        "types": "./dist/types/index.d.ts",
+        "types": "./dist/cjs/index.d.ts",
         "default": "./dist/cjs/index.js"
       }
-    }
+    },
+    "./package.json": "./package.json"
   },
   "files": [
+    "types.d.ts",
     "dist",
     "LICENSE",
     "README.md"
