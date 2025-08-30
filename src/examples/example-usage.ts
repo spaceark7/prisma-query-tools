@@ -1,5 +1,6 @@
-import { parseQuery, serializeQuery } from "../dist/types";
-import { QueryOptions } from "../dist/types/types";
+import { parseQuery } from "../parser.ts";
+import { serializeQuery } from "../serializer.ts";
+import { QueryOptions } from "../types.ts";
 
 // Example 1: Parsing a query string with valid parameters
 console.log('Example 1: Valid query parsing');
@@ -8,6 +9,7 @@ const validQueryParams = {
   limit: '10',
   sort: 'name:asc,createdAt:desc',
   fields: 'id,name,email',
+  omits: 'password,ssn',
   'filters[status]': 'active',
   'filters[age]': '30',
   'filters[user.profile.firstName]': 'John',
@@ -74,6 +76,9 @@ try {
 } catch (error) {
   console.error('Serialization error:', error);
 }
+
+// Example 1 Fetch
+
 
 // Example 4: Error handling for invalid serialization
 console.log('\nExample 4: Invalid serialization');

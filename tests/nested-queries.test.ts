@@ -88,6 +88,25 @@ describe('Nested Queries', () => {
       expect(result).toContain('filters%5Bprofile.lastName%5D=Doe');
       expect(result).toContain('filters%5Bage%5D=30');
     });
+    it('should correctly serialize nested objects to dot notation (includes)', () => {
+      const options: QueryOptions = {
+        includes: {
+          profile: {
+            select: {
+              firstName: true,
+              lastName: true
+            }
+          },
+          age: true
+        }
+      };
+
+      const result = serializeQuery(options);
+
+      expect(result).toContain('includes%5Bprofile.select.firstName%5D=true');
+      expect(result).toContain('includes%5Bprofile.select.lastName%5D=true');
+      expect(result).toContain('includes%5Bage%5D=true');
+    });
     
     it('should handle deeply nested objects', () => {
       const options: QueryOptions = {
@@ -169,6 +188,50 @@ describe('Nested Queries', () => {
             lastName: 'Doe'
           },
           age: 30
+        }
+      }));
+    });
+    it('should correctly handle nested queries in a round trip (includes)', () => {
+      // Original query parameters
+      const queryParams = {
+        'includes[profile.firstName]': 'true',
+        'includes[profile.lastName]': 'true',
+        'includes[age]': 'true'
+      };
+
+      // Parse the query parameters
+      const parseResult = parseQuery(queryParams);
+      expect(parseResult.success).toBe(true);
+
+      // Create query options based on the parse result
+      const queryOptions: QueryOptions = {
+        includes: parseResult.data.include
+      };
+
+      // Serialize back to a query string
+      const queryString = serializeQuery(queryOptions);
+
+      // Parse the serialized string back to query parameters
+      const paramsString = queryString.startsWith('?') ? queryString.substring(1) : queryString;
+      const urlParams = new URLSearchParams(paramsString);
+      const reconstructedParams: Record<string, any> = {};
+
+      for (const [key, value] of urlParams.entries()) {
+        reconstructedParams[key] = value;
+      }
+
+      // Parse again
+      const secondParseResult = parseQuery(reconstructedParams);
+
+      // Verify the final result matches the original - use string for comparison to avoid type issues
+      expect(secondParseResult.success).toBe(true);
+      expect(JSON.stringify(secondParseResult.data)).toEqual(JSON.stringify({
+        include: {
+          profile: {
+            firstName: true,
+            lastName: true
+          },
+          age: true
         }
       }));
     });

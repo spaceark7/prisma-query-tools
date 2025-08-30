@@ -104,6 +104,36 @@ describe('serializeQuery', () => {
       expect(result).toBe('?filters%5Bstatus%5D=active');
     });
   });
+  describe('Includes', () => {
+    it('should correctly serialize include parameters', () => {
+      const options: QueryOptions = {
+        includes: {
+          profile: true
+        }
+      };
+
+      const result = serializeQuery(options, { startWithQuestionMark: true });
+      expect(result).toMatch(/includes%5Bprofile%5D=true/);
+
+    });
+
+
+    it('should skip null and undefined include values', () => {
+      const options: QueryOptions = {
+        includes: {
+          profile: {
+            select: {
+              bio: true,
+              age: null
+            }
+          }
+        }
+      };
+
+      const result = serializeQuery(options, { startWithQuestionMark: true });
+      expect(result).toBe('?includes%5Bprofile.select.bio%5D=true');
+    });
+  });
   
   describe('Combined parameters', () => {
     it('should correctly serialize a combination of parameters', () => {
@@ -158,7 +188,9 @@ describe('serializeQuery', () => {
       // Check if commas are unescaped
       expect(result.includes(',createdAt:desc')).toBe(true);
     });
-  }); describe('Error handling', () => {
+  });
+
+  describe('Error handling', () => {
     it('should throw error for invalid page value', () => {
       const options = {
         page: -1,
@@ -177,6 +209,20 @@ describe('serializeQuery', () => {
       expect(() => serializeQuery(options, { startWithQuestionMark: true })).toThrow();
     });
     
+    it('should throw error if has fields and includes', () => {
+      const options = {
+        page: 1,
+        limit: 10,
+        fields: ['id'],
+        includes: {
+          profile: true
+        }
+      } as QueryOptions;
+
+      expect(() => serializeQuery(options, { startWithQuestionMark: true })).toThrow();
+      expect(() => serializeQuery(options, { startWithQuestionMark: true })).toThrow();
+    });
+
     it('should handle empty options gracefully with question mark', () => {
       const options = {} as QueryOptions;
 

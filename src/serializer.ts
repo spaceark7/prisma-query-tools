@@ -57,6 +57,9 @@ export function serializeQuery(options: QueryOptions, config: SerializerConfig =
     if (options.fields && options.fields.length > 0) {
       params.set("fields", options.fields.join(","));
     }
+    if (options.omits && options.omits.length > 0) {
+      params.set("omits", options.omits.join(","));
+    }
 
     if (options.filters) {
       // Convert nested objects to flattened dot notation
@@ -65,6 +68,19 @@ export function serializeQuery(options: QueryOptions, config: SerializerConfig =
       for (const [path, value] of Object.entries(flattenedFilters)) {
         if (value !== undefined && value !== null) {
           params.set(`filters[${path}]`, String(value));
+        }
+      }
+    }
+    if (options.includes && Object.keys(options.includes).length > 0) {
+      if (options.fields) {
+        throw new Error("Cannot use 'fields' and 'includes' together. They are mutually exclusive.");
+      }
+      // Convert nested objects to flattened dot notation
+      const flattenedIncludes = flattenObject(options.includes);
+
+      for (const [path, value] of Object.entries(flattenedIncludes)) {
+        if (value !== undefined && value !== null) {
+          params.set(`includes[${path}]`, String(value));
         }
       }
     }

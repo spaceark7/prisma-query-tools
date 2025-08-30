@@ -11,7 +11,8 @@ describe('Nested Fields', () => {
       };
       
       const result = parseQuery(queryParams);
-      
+      console.log(result);
+
       expect(result.success).toBe(true);
       expect(result.data).toEqual({
         select: {

@@ -53,7 +53,8 @@ const querySchema = yup.object({
   limit: yup.number().integer().min(1).typeError('Limit must be a positive integer'),
   sort: yup.string().matches(/^[a-zA-Z0-9_]+(:(asc|desc))?(,[a-zA-Z0-9_]+(:(asc|desc))?)*$/, 
     'Sort must be in format field:direction (e.g. name:asc,createdAt:desc)'),
-  fields: yup.array().of(yup.string().matches(/^[a-zA-Z0-9_.]+$/, 'Field names must be alphanumeric with optional dot notation for nested fields'))
+  fields: yup.array().of(yup.string().matches(/^[a-zA-Z0-9_.]+$/, 'Field names must be alphanumeric with optional dot notation for nested fields')),
+  omits: yup.array().of(yup.string().matches(/^[a-zA-Z0-9_.]+$/, 'Field names must be alphanumeric with optional dot notation for nested fields'))
 });
 
 /**
@@ -98,6 +99,9 @@ export function parseQuery(raw: Record<string, any>): QueryParseResult {
     if (raw.fields !== undefined) {
       query.fields = String(raw.fields).split(",").map(field => field.trim()).filter(field => field !== "");
     }
+    if (raw.omits !== undefined) {
+      query.omits = String(raw.omits).split(",").map(field => field.trim()).filter(field => field !== "");
+    }
 
     // Detect filter keys like filters[status] or filters[profile.firstName]
     query.filters = {};
@@ -114,10 +118,31 @@ export function parseQuery(raw: Record<string, any>): QueryParseResult {
         }
       }
     }
+    // Detect includes keys like includes[status] or includes[profile.firstName]
+    query.includes = {};
+    for (const key in raw) {
+      const match = key.match(/^includes\[(.+)\]$/);
+      if (match) {
+        const path = match[1];
+        if (path.includes('.')) {
+          // Handle nested path like 'profile.firstName'
+          setNestedValue(query.includes, path, raw[key]);
+        } else {
+          // Handle simple path
+          query.includes[path] = convertValueType(raw[key]);
+        }
+      }
+    }
+
+    // check if query has both includes and select
+
 
     // Validate extracted options against schema
     try {
       querySchema.validateSync(query, { abortEarly: false });
+      if (Object.keys(query.includes).length > 0 && query.fields) {
+        result.errors!['includes'] = 'Cannot use both includes and fields (select) simultaneously';
+      }
     } catch (validationError) {
       if (validationError instanceof yup.ValidationError) {
         validationError.inner.forEach(err => {
@@ -177,6 +202,38 @@ export function parseQuery(raw: Record<string, any>): QueryParseResult {
         }
       }
     }
+    // Handle omits fields
+    if (query.omits && query.omits.length > 0) {
+      prismaQuery.omit = {};
+
+      for (const field of query.omits) {
+        if (field.includes('.')) {
+          // Handle nested field like 'profile.bio'
+          const parts = field.split('.');
+          let current = prismaQuery.omit!;
+
+          for (let i = 0; i < parts.length - 1; i++) {
+            const part = parts[i];
+            if (!current[part]) {
+              current[part] = { omit: {} };
+            } else if (typeof current[part] === 'object' && 'select' in current[part]) {
+              // It already has a select object, no need to do anything
+            } else {
+              // If it exists but doesn't have a select property (it might be a boolean), convert it
+              current[part] = { omit: {} };
+            }
+            // TypeScript needs a type assertion here since we've ensured it's an object with select
+            current = (current[part] as { omit: any }).omit;
+          }
+
+          // Set the final field
+          current[parts[parts.length - 1]] = true;
+        } else {
+          // Handle simple field
+          prismaQuery.omit[field] = true;
+        }
+      }
+    }
 
     // Handle sorting
     if (query.sort) {
@@ -205,6 +262,10 @@ export function parseQuery(raw: Record<string, any>): QueryParseResult {
     // Handle filters
     if (query.filters && Object.keys(query.filters).length > 0) {
       prismaQuery.where = query.filters;
+    }
+    // Handle includes
+    if (query.includes && Object.keys(query.includes).length > 0) {
+      prismaQuery.include = query.includes;
     }
 
     result.data = prismaQuery;
