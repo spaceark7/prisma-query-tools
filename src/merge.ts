@@ -18,7 +18,14 @@ export interface MergeQueryOptions {
    * - 'merge': Merge nested select objects (default)
    */
   selectStrategy?: 'replace' | 'merge';
-  
+
+  /**
+   * How to merge 'include' relations
+   * - 'replace': Replace existing includes with new ones
+   * - 'merge': Merge nested include objects (default)
+   */
+  includeStrategy?: 'replace' | 'merge';
+
   /**
    * How to merge 'orderBy' conditions
    * - 'replace': Replace existing order conditions with new ones
@@ -26,6 +33,13 @@ export interface MergeQueryOptions {
    * - 'append': Add new sort conditions after existing ones
    */
   orderByStrategy?: 'replace' | 'prepend' | 'append';
+
+  /**
+   * How to handle omitted fields
+   * - 'replace': Replace existing omit settings with new ones
+   * - 'merge': Merge omit settings (union of omitted fields) (default)
+   */
+  omitStrategy?: 'replace' | 'merge';
 }
 
 /**
@@ -36,7 +50,7 @@ export interface MergeQueryOptions {
  */
 function deepMerge(target: Record<string, any>, source: Record<string, any>): Record<string, any> {
   const output = { ...target };
-  
+
   if (isObject(target) && isObject(source)) {
     Object.keys(source).forEach(key => {
       if (isObject(source[key])) {
@@ -52,7 +66,7 @@ function deepMerge(target: Record<string, any>, source: Record<string, any>): Re
       }
     });
   }
-  
+
   return output;
 }
 
@@ -81,12 +95,14 @@ export function mergeQueries(
   const {
     whereStrategy = 'spread',
     selectStrategy = 'merge',
-    orderByStrategy = 'prepend'
+    includeStrategy = 'merge',
+    orderByStrategy = 'prepend',
+    omitStrategy = 'merge'
   } = options;
-  
+
   // Start with a copy of the default query
   const result: PrismaQuery = { ...defaultQuery };
-  
+
   // Handle 'where' conditions based on strategy
   if (parsedQuery.where) {
     if (!result.where) {
@@ -105,7 +121,7 @@ export function mergeQueries(
       }
     }
   }
-  
+
   // Handle 'select' fields based on strategy
   if (parsedQuery.select) {
     if (!result.select) {
@@ -119,7 +135,34 @@ export function mergeQueries(
       }
     }
   }
-  
+
+  // Handle 'include' relations based on strategy
+  if (parsedQuery.include) {
+    if (!result.include) {
+      result.include = parsedQuery.include;
+    } else {
+      if (includeStrategy === 'replace') {
+        result.include = parsedQuery.include;
+      } else {
+        // Merge strategy: deep merge include objects
+        result.include = deepMerge(result.include, parsedQuery.include);
+      }
+    }
+  }
+
+  // Handle 'omit' settings based on strategy
+  if (parsedQuery.omit) {
+    if (!result.omit) {
+      result.omit = parsedQuery.omit;
+    } else {
+      if (omitStrategy === 'replace') {
+        result.omit = parsedQuery.omit;
+      } else {
+        result.omit = deepMerge(result.omit, parsedQuery.omit)
+      }
+    }
+  }
+
   // Handle 'orderBy' based on strategy
   if (parsedQuery.orderBy?.length) {
     if (!result.orderBy || !result.orderBy.length) {
@@ -135,15 +178,15 @@ export function mergeQueries(
       }
     }
   }
-  
+
   // Always take pagination from parsed query if present
   if (parsedQuery.skip !== undefined) {
     result.skip = parsedQuery.skip;
   }
-  
+
   if (parsedQuery.take !== undefined) {
     result.take = parsedQuery.take;
   }
-  
+
   return result;
 }
